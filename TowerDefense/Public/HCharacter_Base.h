@@ -4,13 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Hao_StructLibrary.h"
 #include "HCharacter_Base.generated.h"
+
 
 
 
 class UPawnSensingComponent;
 class UBehaviorTree;
-struct FHaoStruct;
+class UWidgetComponent;
+class UUserWidget;
+
 
 
 UCLASS()
@@ -49,24 +53,33 @@ protected:
 	/*用于需要一对一的战斗 , 防止扎堆*/
 	bool InBattle = false;
 
+	/*确保死亡只有一次*/
+	bool OneDie = false;
 public:
-	/*结构体测试*/
-	FHaoStruct* aa; 
-	/*血量上限*/
-	UPROPERTY(EditAnywhere,BlueprintReadWrite, DisplayName = "最大血量",Category = "角色属性")
-	float HP_Max = 100.0f;
-
-	/*区分团队 , 防止友伤*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, DisplayName = "团队", Category = "角色属性")
-	int HTeam = 0;
-
-	/*自定义行为树*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, DisplayName = "行为树", Category = "角色属性")
-	UBehaviorTree* HBehaviorTree;
+	/*角色属性*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (DisplayName = "角色属性"), Category = "默认")
+	FHao_StructLibrary CharacterAttributes;
+	/*升级属性*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (DisplayName = "升级属性"), Category = "默认")
+	TArray<FLevelCtrl> CharacterLevelUpAttributes;
+// 	/*血量上限*/
+// 	UPROPERTY(EditAnywhere,BlueprintReadWrite, DisplayName = "最大血量",Category = "角色属性")
+// 	float HP_Max = 100.0f;
+// 
+// 	/*区分团队 , 防止友伤*/
+// 	UPROPERTY(EditAnywhere, BlueprintReadWrite, DisplayName = "团队", Category = "角色属性")
+// 	int HTeam = 0;
+// 
+// 	/*自定义行为树*/
+// 	UPROPERTY(EditAnywhere, BlueprintReadWrite, DisplayName = "行为树", Category = "角色属性")
+// 	UBehaviorTree* HBehaviorTree;
 
 	/*当前血量*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, DisplayName = "当前血量",Category = "运行时")
-	float HP_Current ;
+	float HP_Current = 1.0f;
+	/*当前经验*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, DisplayName = "当前经验", Category = "运行时")
+	float Experience_Current = 0.0f;
 
 	/*游戏开始时 , 能接收到自动生成的动态材质实例数组*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, DisplayName = "动态材质实例组",Category = "运行时")
@@ -79,8 +92,10 @@ public:
 	/*定时器句柄*/
 	FTimerHandle CountdownTimerHandle;
 
-
-
+	/*widget Class*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, DisplayName = "wid类", Category = "默认")
+	TSubclassOf<UUserWidget> HWidgetClass;
+	
 
 
 
@@ -101,10 +116,10 @@ public:
 	/*一个依赖蓝图实现的函数
 	*可以调用受伤变色*/
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Hao")
-	void PlayHitColorTimeline(); 
+	void PlayHitColorTimeline(float inDamage); 
 
 	/*一个依赖蓝图实现的函数
-	*可以调用受伤变色*/
+	*可以调用死亡变色*/
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Hao")
 	void PlayDieColorTimeline();
 
@@ -112,6 +127,12 @@ public:
 	*可以攻击*/
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Hao")
 	void HAttack();
+
+	/*死亡蓝图事件 , 用于死亡时生成蓝图类
+	*MurdererController:杀死this的控制器
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Hao")
+	void Die(AController* MurdererController);
 
 	/*检测伤害 , 用于近战*/
 private:
@@ -150,4 +171,13 @@ protected:
 	/*定时销毁
 	*非做不可 , 因为事件绑定需要*/
 	void DestroySelf();
+public:
+	/*掉落经验*/
+	void PropExperience(float Experience);
+	/*获得经验*/
+	UFUNCTION(BlueprintCallable)
+	void GetExperience(float Experience);
+
+	/*等级更新*/
+	void LevelUpdate();
 };

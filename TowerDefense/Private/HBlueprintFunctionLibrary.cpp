@@ -7,6 +7,9 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Math/UnrealMathUtility.h"
+#include "Components/WidgetComponent.h"
+#include "Blueprint/UserWidget.h"
 
 
 /*测试两种打印方式*/
@@ -70,7 +73,7 @@ void UHBlueprintFunctionLibrary::HGetEnemiesInRange(AActor* Taget, const int Tea
 	for (int32 Index = 0; Index < OutActors.Num(); ++Index)
 	{
 		/*检查是否同队*/
-		if (Team != Cast<AHCharacter_Base>(OutActors[Index])->HTeam)
+		if (Team != Cast<AHCharacter_Base>(OutActors[Index])->CharacterAttributes.HTeam)
 		{
 			TempActor.Emplace(OutActors[Index]);
 		}
@@ -90,4 +93,42 @@ void UHBlueprintFunctionLibrary::HGetEnemiesInRange(AActor* Taget, const int Tea
 		Enemies = TempActor[UKismetMathLibrary::RandomIntegerInRange(0, objnum-1)];
 	}
 }
+
+/*这个函数是未完成的 , 没有任何效果*/
+void UHBlueprintFunctionLibrary::SpawnDamageText(const AActor* Taget, TSubclassOf<UUserWidget> HWidgetClass, const EWidgetSpace Space, const FVector Location, const FVector2D Size, const FVector2D Pivot)
+{
+
+}
+
+void UHBlueprintFunctionLibrary::HSetWidgetClass(UWidgetComponent* Taget , const TSubclassOf<UUserWidget> HClass)
+{
+	Taget->SetWidgetClass(HClass);
+}
+
+void UHBlueprintFunctionLibrary::RandomVectorInRange(const FVector Min, const FVector Max, FVector& RetuenValue)
+{
+	RetuenValue = FVector(FMath::RandRange(Min.X, Max.X),
+		FMath::RandRange(Min.Y, Max.Y),
+		FMath::RandRange(Min.Z, Max.Z));
+}
+
+void UHBlueprintFunctionLibrary::GetTolerance(const float In, const float Tolerance, float& Min, float& Max)
+{
+	Min = In - Tolerance;
+	Max = In + Tolerance;
+}
+
+void UHBlueprintFunctionLibrary::RandomFloatInTolerance(const float In, const float Tolerance, float& ReturnValue)
+{
+	ReturnValue = FMath::RandRange(In- Tolerance, In+Tolerance);
+}
+
+void UHBlueprintFunctionLibrary::RandomVectorInTolerance(const FVector In, const FVector Tolerance, FVector& RetuenValue)
+{
+	RetuenValue = FVector(FMath::RandRange(In.X- Tolerance.X, In.X + Tolerance.X),
+		FMath::RandRange(In.Y - Tolerance.Y, In.Y + Tolerance.Y),
+		FMath::RandRange(In.Z - Tolerance.Z, In.Z - Tolerance.Z));
+}
+
+
 

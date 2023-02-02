@@ -9,7 +9,9 @@
 #include "HAIController_Base.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
-#include "Hao_Struct.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Blueprint/UserWidget.h"
 
 // Sets default values
 AHCharacter_Base::AHCharacter_Base()
@@ -18,7 +20,6 @@ AHCharacter_Base::AHCharacter_Base()
 	PrimaryActorTick.bCanEverTick = true;
 	/*初始化组件*/
 	PawnSensingComp = CreateDefaultSubobject<UPawnSensingComponent>(TEXT("HPawnSensingComponent"));
-	
 
 }
 // Called when the game starts or when spawned
@@ -31,7 +32,6 @@ void AHCharacter_Base::BeginPlay()
 	PawnSensingComp->OnHearNoise.AddDynamic(this, &AHCharacter_Base::OnNoiseHeard);
 	OnTakeAnyDamage.AddDynamic(this, &AHCharacter_Base::OnTakeRadialDamage);
 	CreateDynamicMaterialInstanceToSkeletal();
-	
 }
 // Called every frame
 void AHCharacter_Base::Tick(float DeltaTime)
@@ -49,7 +49,7 @@ void AHCharacter_Base::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void AHCharacter_Base::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	HP_Current = HP_Max;
+	LevelUpdate();
 }
 
 
@@ -80,7 +80,7 @@ void AHCharacter_Base::OnPawnSeen(APawn* SeePawn)
 		return;
 	}
 	AHCharacter_Base * CharacterTemp = Cast<AHCharacter_Base>(SeePawn);
-	if (CharacterTemp && HTeam == CharacterTemp->HTeam)
+	if (CharacterTemp && CharacterAttributes.HTeam == CharacterTemp->CharacterAttributes.HTeam)
 	{
 		return;//类相同且阵营相同时退出
 	}
@@ -119,7 +119,8 @@ void AHCharacter_Base::HSetEnemy(APawn* HPawn)
 void AHCharacter_Base::HPReduce(float Damage, bool PlayHitColor)
 {
 	HP_Current -= Damage;
-	if (PlayHitColor){PlayHitColorTimeline();}
+	if (PlayHitColor){PlayHitColorTimeline(Damage);}
+	
 }
 
 void AHCharacter_Base::OnTakeRadialDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
@@ -127,11 +128,33 @@ void AHCharacter_Base::OnTakeRadialDamage(AActor* DamagedActor, float Damage, co
 	/*扣血*/
 	HP_Current -= Damage;
 	/*受击变色*/
-	PlayHitColorTimeline();
+	PlayHitColorTimeline(Damage);
+	/*死亡事件*/
 	if (HP_Current <= 0)
-	{	/*进入死亡倒计时*/
+	{	
+		/*如果OneDie为真 , 说明死亡已经触发一次了*/
+		if (OneDie) { return; }
+		OneDie = true;
+		UCapsuleComponent* TempCapsule = GetCapsuleComponent();
+		if (CharacterAttributes.DiePy)
+		{
+			USkeletalMeshComponent* HMesh = GetMesh();
+
+			HMesh->SetAllBodiesSimulatePhysics(true);
+			HMesh->SetAllBodiesPhysicsBlendWeight(1.0f);
+			HMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+			TempCapsule->SetSimulatePhysics(true);
+		}
+		/*忽略胶囊体*/
+		TempCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+		TempCapsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+		/*掉落经验*/
+		Die(InstigatedBy);
+		/*进入死亡倒计时*/
 		GetWorldTimerManager().SetTimer(CountdownTimerHandle, this, &AHCharacter_Base::DestroySelf, 1.0f, true);
 		PlayDieColorTimeline();
+		
 	}
 	//GEngine->AddOnScreenDebugMessage(-1, 5, FColor(0, 255, 255), TEXT("%d"), HP_Current);
 }
@@ -140,6 +163,44 @@ void AHCharacter_Base::DestroySelf()
 {	
 	GetWorldTimerManager().ClearTimer(CountdownTimerHandle);
 	this->Destroy(true);
+}
+
+void AHCharacter_Base::GetExperience(float Experience)
+{
+	if (CharacterAttributes.Level_Current >= CharacterLevelUpAttributes.Num()) { return; }
+	Experience_Current += Experience;
+	//溢出经验大于等于0时表示升级了
+	float spillover = Experience_Current - CharacterLevelUpAttributes[CharacterAttributes.Level_Current].Experience;
+	if (spillover >= 0)
+	{
+		Experience_Current = spillover;
+		CharacterAttributes.Level_Current += 1;
+		LevelUpdate();
+	}
+}
+
+void AHCharacter_Base::LevelUpdate()
+{	
+	if (CharacterAttributes.Level_Current >= CharacterLevelUpAttributes.Num()) { return; }
+	/*局部变量存储当前等级下的参数列表*/
+	FLevelCtrl TempLevelCtrl = CharacterLevelUpAttributes[CharacterAttributes.Level_Current];
+	/*更新血量*/
+	HP_Current = TempLevelCtrl.HP_Max;
+	/*更新骨骼*/
+	GetMesh()->SetSkeletalMesh(TempLevelCtrl.SkeletalMesh);
+	/*更新材质*/
+	TArray<FSkeletalMaterial> MaterialGroup = TempLevelCtrl.SkeletalMesh->GetMaterials();
+	for (int i = 0; i < MaterialGroup.Num(); i++)
+	{
+		GetMesh()->SetMaterial(i, MaterialGroup[i].MaterialInterface);
+	}
+	CreateDynamicMaterialInstanceToSkeletal();
+	
+	/*更新动画*/
+	GetMesh()->SetAnimInstanceClass(TempLevelCtrl.AnimInstance);
+	/*播放升级特效*/
+
+	/*播放升级蒙太奇*/
 }
 
 

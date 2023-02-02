@@ -16,9 +16,9 @@ void AHAIController_Base::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("RuningController"));
 	/*运行行为树*/
 	AHCharacter_Base* PawnTemp = Cast<AHCharacter_Base>(GetPawn());
-	if (PawnTemp && PawnTemp->HBehaviorTree)
+	if (PawnTemp && PawnTemp->CharacterAttributes.HBehaviorTree)
 	{
-		RunBehaviorTree(PawnTemp->HBehaviorTree);
+		RunBehaviorTree(PawnTemp->CharacterAttributes.HBehaviorTree);
 	}
 }
 

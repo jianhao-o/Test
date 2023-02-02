@@ -1,7 +1,7 @@
 ﻿#include "Damage/HDamage_Base.h"
 #include "Components/SphereComponent.h"
 #include "Particles/ParticleSystemComponent.h"
-#include "GameFramework/ProjectileMovementComponent.h"
+#include "GameFramework/Pawn.h"
 
 AHDamage_Base::AHDamage_Base()
 {
@@ -9,12 +9,11 @@ AHDamage_Base::AHDamage_Base()
 	SphereComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SphereComp->SetCollisionResponseToAllChannels(ECR_Ignore);
 	SphereComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	SphereComp->SetSphereRadius(50.0f);
+	SphereComp->SetSphereRadius(HRadiu);
 	RootComponent = SphereComp;
 	EmitterComp = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("HParticleComponent"));
 	EmitterComp->SetupAttachment(RootComponent);
-	ProjectileComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileComponent"));
-	ProjectileComp->InitialSpeed = 3000.0f;
+
 }
 
 void AHDamage_Base::BeginPlay()
@@ -26,9 +25,18 @@ void AHDamage_Base::BeginPlay()
 	HDelayDestroy(10.0f);
 }
 
-/*事件开始重叠*/
+void AHDamage_Base::OnConstruction(const FTransform& Transform)
+{
+	SphereComp->SetSphereRadius(HRadiu);
+}
+
+/*事件开始重叠 */
 void AHDamage_Base::HandleOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult){}
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	/*如果用户填入了Owner_Pawn , 使用它的控制器*/
+	if (Owner_Pawn){OwnerController = Owner_Pawn->GetController();}
+}
 
 /*延迟调用自毁*/
 void AHDamage_Base::HDelayDestroy(float Delay)
